@@ -1,0 +1,11 @@
+{
+    "name": "Data Visualizer",
+    "short_name": "DataViz",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#2196F3",
+    "description": "A data visualization web application",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false
+}
