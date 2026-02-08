@@ -33,6 +33,29 @@ class ChartController {
     }
   }
 
+  /// Determine rotation angle based on number of labels
+  /// Returns rotation in radians
+  double _getLabelRotation(int labelCount) {
+    if (labelCount < 10) {
+      return 0; // No rotation (horizontal)
+    } else if (labelCount <= 20) {
+      return -0.785398; // 45 degrees in radians
+    } else {
+      return -1.5708; // 90 degrees in radians
+    }
+  }
+
+  /// Get reserved size for bottom axis based on rotation
+  double _getBottomReservedSize(int labelCount) {
+    if (labelCount < 10) {
+      return 30; // Normal height
+    } else if (labelCount <= 20) {
+      return 50; // Extra space for 45° rotation
+    } else {
+      return 70; // Extra space for 90° rotation
+    }
+  }
+
   /// Generate bar chart data
   BarChartData _generateBarChartData(
     ChartConfig config,
@@ -67,20 +90,28 @@ class ChartController {
       index++;
     });
 
+    final labelCount = aggregated.length;
+    final rotation = _getLabelRotation(labelCount);
+    final reservedSize = _getBottomReservedSize(labelCount);
+
     return BarChartData(
       barGroups: barGroups,
       titlesData: FlTitlesData(
         bottomTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
+            reservedSize: reservedSize,
             getTitlesWidget: (value, meta) {
               final keys = aggregated.keys.toList();
               if (value.toInt() >= 0 && value.toInt() < keys.length) {
                 return Padding(
                   padding: const EdgeInsets.only(top: 8.0),
-                  child: Text(
-                    keys[value.toInt()],
-                    style: const TextStyle(fontSize: 10),
+                  child: Transform.rotate(
+                    angle: rotation,
+                    child: Text(
+                      keys[value.toInt()],
+                      style: const TextStyle(fontSize: 10),
+                    ),
                   ),
                 );
               }
@@ -130,6 +161,10 @@ class ChartController {
       index++;
     });
 
+    final labelCount = aggregated.length;
+    final rotation = _getLabelRotation(labelCount);
+    final reservedSize = _getBottomReservedSize(labelCount);
+
     return LineChartData(
       lineBarsData: [
         LineChartBarData(
@@ -144,14 +179,18 @@ class ChartController {
         bottomTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
+            reservedSize: reservedSize,
             getTitlesWidget: (value, meta) {
               final keys = aggregated.keys.toList();
               if (value.toInt() >= 0 && value.toInt() < keys.length) {
                 return Padding(
                   padding: const EdgeInsets.only(top: 8.0),
-                  child: Text(
-                    keys[value.toInt()],
-                    style: const TextStyle(fontSize: 10),
+                  child: Transform.rotate(
+                    angle: rotation,
+                    child: Text(
+                      keys[value.toInt()],
+                      style: const TextStyle(fontSize: 10),
+                    ),
                   ),
                 );
               }
