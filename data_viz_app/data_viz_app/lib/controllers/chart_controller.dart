@@ -10,7 +10,7 @@ class ChartController {
   /// Generate chart data based on configuration
   dynamic generateChart(ChartConfig config, DataFile dataFile) {
     // Get filtered data
-    final filteredData = _dataController.getFilteredData(
+    var filteredData = _dataController.getFilteredData(
       dataFile,
       dateRange: config.dateRange,
       dateColumnName: dataFile.getDateColumns().isNotEmpty 
@@ -18,6 +18,16 @@ class ChartController {
           : null,
       columnFilters: config.appliedFilters,
     );
+
+    // Apply X-axis value filter if specified
+    if (config.xAxisFilterValues != null && config.xAxisFilterValues!.isNotEmpty) {
+      filteredData = _dataController.filterByXAxisValues(
+        filteredData,
+        dataFile,
+        config.xAxisColumn,
+        config.xAxisFilterValues!,
+      );
+    }
 
     switch (config.chartType) {
       case ChartType.bar:

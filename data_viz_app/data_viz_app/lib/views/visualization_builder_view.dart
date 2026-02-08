@@ -3,6 +3,7 @@ import '../models/data_file.dart';
 import '../models/chart_config.dart';
 import '../models/date_range.dart';
 import '../controllers/storage_controller.dart';
+import '../controllers/data_controller.dart';
 import 'widgets/date_range_picker.dart';
 import 'widgets/column_selector.dart';
 import 'widgets/chart_display.dart';
@@ -22,6 +23,7 @@ class VisualizationBuilderView extends StatefulWidget {
 
 class _VisualizationBuilderViewState extends State<VisualizationBuilderView> {
   final StorageController _storageController = StorageController();
+  final DataController _dataController = DataController();
   
   DateRange? _selectedDateRange;
   String? _selectedXColumn;
@@ -29,6 +31,10 @@ class _VisualizationBuilderViewState extends State<VisualizationBuilderView> {
   ChartType _selectedChartType = ChartType.bar;
   String _chartTitle = '';
   ChartConfig? _currentConfig;
+  
+  // X-axis filtering
+  List<String> _availableXValues = [];
+  List<String> _selectedXValues = [];
 
   @override
   void initState() {
@@ -48,6 +54,28 @@ class _VisualizationBuilderViewState extends State<VisualizationBuilderView> {
     }
 
     setState(() {
+      _currentConfig = ChartConfig(
+        chartType: _selectedChartType,
+        xAxisColumn: _selectedXColumn!,
+        yAxisColumns: _selectedYColumns,
+        dateRange: _selectedDateRange,
+        title: _chartTitle,
+        xAxisFilterValues: _selectedXValues.isNotEmpty ? _selectedXValues : null,
+      );
+    });
+  }
+
+  void _handleXColumnSelected(String column) {
+    setState(() {
+      _selectedXColumn = column;
+      // Get unique values for the selected column
+      _availableXValues = _dataController
+          .getUniqueValues(widget.dataFile, column)
+          .map((v) => v?.toString() ?? '')
+          .toList();
+      // Select all by default
+      _selectedXValues = List.from(_availableXValues);
+
       _currentConfig = ChartConfig(
         chartType: _selectedChartType,
         xAxisColumn: _selectedXColumn!,
@@ -171,11 +199,7 @@ class _VisualizationBuilderViewState extends State<VisualizationBuilderView> {
                     dataFile: widget.dataFile,
                     selectedXColumn: _selectedXColumn,
                     selectedYColumns: _selectedYColumns,
-                    onXColumnSelected: (column) {
-                      setState(() {
-                        _selectedXColumn = column;
-                      });
-                    },
+                    onXColumnSelected: _handleXColumnSelected,
                     onYColumnsSelected: (columns) {
                       setState(() {
                         _selectedYColumns = columns;
@@ -184,6 +208,11 @@ class _VisualizationBuilderViewState extends State<VisualizationBuilderView> {
                   ),
                   
                   const SizedBox(height: 16),
+                  
+                  // X-Axis Filter
+                  if (_availableXValues.isNotEmpty) _buildXAxisFilter(),
+                  
+                  if (_availableXValues.isNotEmpty) const SizedBox(height: 16),
                   
                   // Chart Type Selector
                   Card(
@@ -280,6 +309,77 @@ class _VisualizationBuilderViewState extends State<VisualizationBuilderView> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildXAxisFilter() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Filter X-Axis Values',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  '${_selectedXValues.length}/${_availableXValues.length} selected',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _availableXValues.map((value) {
+                final isSelected = _selectedXValues.contains(value);
+                return FilterChip(
+                  label: Text(value),
+                  selected: isSelected,
+                  onSelected: (selected) {
+                    setState(() {
+                      if (selected) {
+                        _selectedXValues.add(value);
+                      } else {
+                        _selectedXValues.remove(value);
+                      }
+                    });
+                  },
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                TextButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _selectedXValues = List.from(_availableXValues);
+                    });
+                  },
+                  icon: const Icon(Icons.check_box, size: 18),
+                  label: const Text('Select All'),
+                ),
+                const SizedBox(width: 8),
+                TextButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _selectedXValues.clear();
+                    });
+                  },
+                  icon: const Icon(Icons.check_box_outline_blank, size: 18),
+                  label: const Text('Deselect All'),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

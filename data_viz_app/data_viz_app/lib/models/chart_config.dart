@@ -17,6 +17,7 @@ class ChartConfig {
   final Map<String, dynamic> appliedFilters;
   final List<Color> colors;
   final String title;
+  final List<String>? xAxisFilterValues;
 
   ChartConfig({
     required this.chartType,
@@ -26,6 +27,7 @@ class ChartConfig {
     this.appliedFilters = const {},
     List<Color>? colors,
     this.title = '',
+    this.xAxisFilterValues,
   }) : colors = colors ?? [
     Colors.blue,
     Colors.red,
@@ -42,6 +44,7 @@ class ChartConfig {
     Map<String, dynamic>? appliedFilters,
     List<Color>? colors,
     String? title,
+    List<String>? xAxisFilterValues,
   }) {
     return ChartConfig(
       chartType: chartType ?? this.chartType,
@@ -51,6 +54,7 @@ class ChartConfig {
       appliedFilters: appliedFilters ?? this.appliedFilters,
       colors: colors ?? this.colors,
       title: title ?? this.title,
+      xAxisFilterValues: xAxisFilterValues ?? this.xAxisFilterValues,
     );
   }
 
@@ -64,6 +68,7 @@ class ChartConfig {
       'appliedFilters': appliedFilters,
       'colors': colors.map((c) => c.value).toList(),
       'title': title,
+      'xAxisFilterValues': xAxisFilterValues,
     };
   }
 
@@ -81,6 +86,9 @@ class ChartConfig {
       appliedFilters: Map<String, dynamic>.from(json['appliedFilters']),
       colors: (json['colors'] as List).map((c) => Color(c as int)).toList(),
       title: json['title'],
+      xAxisFilterValues: json['xAxisFilterValues'] != null
+          ? List<String>.from(json['xAxisFilterValues'])
+          : null,
     );
   }
 

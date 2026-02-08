@@ -152,4 +152,23 @@ class DataController {
 
     return values;
   }
+
+  /// Filter data to only include rows with specific X-axis values
+  List<List<dynamic>> filterByXAxisValues(
+    List<List<dynamic>> data,
+    DataFile dataFile,
+    String columnName,
+    List<String> selectedValues,
+  ) {
+    if (selectedValues.isEmpty) return [];
+    
+    final columnIndex = dataFile.getColumnIndex(columnName);
+    if (columnIndex == -1) return data;
+
+    return data.where((row) {
+      if (columnIndex >= row.length) return false;
+      final value = row[columnIndex]?.toString() ?? '';
+      return selectedValues.contains(value);
+    }).toList();
+  }
 }
