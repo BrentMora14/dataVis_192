@@ -105,6 +105,12 @@ class DataController {
     {String aggregateType = 'sum'} // sum, avg, count
   ) {
     final groupIndex = dataFile.getColumnIndex(groupByColumn);
+    
+    // Special handling for Count (Frequency) mode
+    if (aggregateColumn == '__COUNT__') {
+      return _countByGroup(data, groupIndex);
+    }
+    
     final aggIndex = dataFile.getColumnIndex(aggregateColumn);
 
     if (groupIndex == -1 || aggIndex == -1) {
@@ -138,6 +144,22 @@ class DataController {
     }
 
     return result;
+  }
+
+  /// Count occurrences of each group (for frequency distribution)
+  Map<String, double> _countByGroup(List<List<dynamic>> data, int groupIndex) {
+    if (groupIndex == -1) return {};
+    
+    Map<String, int> counts = {};
+    
+    for (var row in data) {
+      if (groupIndex >= row.length) continue;
+      final groupValue = row[groupIndex]?.toString() ?? 'Unknown';
+      counts[groupValue] = (counts[groupValue] ?? 0) + 1;
+    }
+    
+    // Convert to double for consistency with other aggregations
+    return counts.map((key, value) => MapEntry(key, value.toDouble()));
   }
 
   /// Get unique values for a column

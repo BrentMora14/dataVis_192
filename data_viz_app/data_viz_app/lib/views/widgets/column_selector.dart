@@ -73,23 +73,37 @@ class ColumnSelector extends StatelessWidget {
         .where((col) => col.type == ColumnType.number)
         .toList();
 
-    if (numericColumns.isEmpty) {
-      return const Text(
-        'No numeric columns available',
-        style: TextStyle(color: Colors.grey),
-      );
-    }
-
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: numericColumns.map((column) {
+    // Build list of options: Count first, then numeric columns
+    final options = <Widget>[];
+    
+    // Add Count (Frequency) option
+    final isCountSelected = selectedYColumns.contains('__COUNT__');
+    options.add(
+      FilterChip(
+        label: const Text('Count (Frequency)'),
+        selected: isCountSelected,
+        onSelected: (selected) {
+          if (selected) {
+            onYColumnsSelected(['__COUNT__']);
+          } else {
+            onYColumnsSelected([]);
+          }
+        },
+      ),
+    );
+    
+    // Add numeric columns
+    options.addAll(
+      numericColumns.map((column) {
         final isSelected = selectedYColumns.contains(column.name);
         return FilterChip(
           label: Text(column.name),
           selected: isSelected,
           onSelected: (selected) {
             List<String> newSelection = List.from(selectedYColumns);
+            // Remove __COUNT__ if selecting a numeric column
+            newSelection.remove('__COUNT__');
+            
             if (selected) {
               if (!newSelection.contains(column.name)) {
                 newSelection.add(column.name);
@@ -101,6 +115,12 @@ class ColumnSelector extends StatelessWidget {
           },
         );
       }).toList(),
+    );
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: options,
     );
   }
 
