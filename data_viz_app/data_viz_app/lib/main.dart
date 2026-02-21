@@ -41,9 +41,14 @@ class _HomePageState extends State<HomePage> {
   int _currentStep = 0; // 0: Upload, 1: Preview, 2: Visualize
 
   void _handleFileUploaded(DataFile dataFile) {
-    setState(() {
-      _currentDataFile = dataFile;
-      _currentStep = 1;
+    // Use Future.microtask to defer setState and prevent UI freeze
+    Future.microtask(() {
+      if (mounted) {
+        setState(() {
+          _currentDataFile = dataFile;
+          _currentStep = 1;
+        });
+      }
     });
   }
 
