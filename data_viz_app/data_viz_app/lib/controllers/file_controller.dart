@@ -57,7 +57,21 @@ class FileController {
     Function(double)? onProgress,
   ) async {
     try {
-      final String csvString = utf8.decode(bytes);
+      String csvString;
+      
+      // Try multiple encoding strategies
+      try {
+        // First attempt: UTF-8 without allowing malformed
+        csvString = utf8.decode(bytes, allowMalformed: false);
+      } catch (e) {
+        try {
+          // Second attempt: UTF-8 with allowMalformed
+          csvString = utf8.decode(bytes, allowMalformed: true);
+        } catch (e2) {
+          // Final fallback: Latin-1 (never throws, handles all byte values)
+          csvString = latin1.decode(bytes);
+        }
+      }
       
       // Parse CSV (this is still synchronous but fast)
       final List<List<dynamic>> rows = const CsvToListConverter().convert(csvString);
