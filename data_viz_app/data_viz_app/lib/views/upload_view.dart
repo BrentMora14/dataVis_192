@@ -19,12 +19,14 @@ class UploadView extends StatefulWidget {
 class _UploadViewState extends State<UploadView> {
   final FileController _fileController = FileController();
   bool _isLoading = false;
+  double _uploadProgress = 0.0;
   String? _errorMessage;
 
   Future<void> _pickFile() async {
     try {
       setState(() {
         _isLoading = true;
+        _uploadProgress = 0.0;
         _errorMessage = null;
       });
 
@@ -48,8 +50,16 @@ class _UploadViewState extends State<UploadView> {
           return;
         }
 
-        // Upload and parse
-        final dataFile = await _fileController.uploadFile(file.name, bytes);
+        // Upload and parse with progress tracking
+        final dataFile = await _fileController.uploadFile(
+          file.name,
+          bytes,
+          onProgress: (progress) {
+            setState(() {
+              _uploadProgress = progress;
+            });
+          },
+        );
 
         if (dataFile != null) {
           widget.onFileUploaded(dataFile);
@@ -66,6 +76,7 @@ class _UploadViewState extends State<UploadView> {
     } finally {
       setState(() {
         _isLoading = false;
+        _uploadProgress = 0.0;
       });
     }
   }
@@ -106,9 +117,38 @@ class _UploadViewState extends State<UploadView> {
                 ),
                 const SizedBox(height: 32),
                 
-                if (_isLoading)
-                  const CircularProgressIndicator()
-                else
+                if (_isLoading) ...[
+                  Column(
+                    children: [
+                      SizedBox(
+                        width: 80,
+                        height: 80,
+                        child: CircularProgressIndicator(
+                          value: _uploadProgress,
+                          strokeWidth: 6,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Processing file: ${(_uploadProgress * 100).toInt()}%',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _uploadProgress < 0.4
+                            ? 'Parsing file...'
+                            : 'Detecting columns...',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else
                   ElevatedButton.icon(
                     onPressed: _pickFile,
                     icon: const Icon(Icons.file_upload),

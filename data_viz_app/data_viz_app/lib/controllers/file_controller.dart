@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:convert';
 import 'package:csv/csv.dart';
 import 'package:excel/excel.dart' as excel_pkg;
 import '../models/data_file.dart';
@@ -7,8 +8,12 @@ import '../utils/date_parser.dart';
 import '../utils/file_validator.dart';
 
 class FileController {
-  /// Upload and parse a file
-  Future<DataFile?> uploadFile(String filename, Uint8List bytes) async {
+  /// Upload and parse a file with progress tracking
+  Future<DataFile?> uploadFile(
+    String filename,
+    Uint8List bytes,
+    {Function(double)? onProgress}
+  ) async {
     // Validate file
     if (!FileValidator.validateFileExtension(filename)) {
       throw Exception('Invalid file type');
@@ -17,20 +22,25 @@ class FileController {
       throw Exception('File too large');
     }
 
+    onProgress?.call(0.0);
+
     // Parse based on extension
     final extension = FileValidator.getFileExtension(filename);
     
     List<List<dynamic>> rawData;
     if (extension == '.csv') {
-      rawData = await parseCSV(bytes);
+      rawData = await parseCSVWithProgress(bytes, onProgress);
     } else if (extension == '.xlsx' || extension == '.xls') {
       rawData = await parseExcel(bytes);
+      onProgress?.call(0.4);
     } else {
       throw Exception('Unsupported file type');
     }
 
-    // Detect columns
-    final columns = detectColumns(rawData);
+    // Detect columns with progress
+    final columns = await detectColumnsAsync(rawData, onProgress);
+
+    onProgress?.call(1.0);
 
     return DataFile(
       filename: filename,
@@ -41,15 +51,28 @@ class FileController {
     );
   }
 
-  /// Parse CSV file
-  Future<List<List<dynamic>>> parseCSV(Uint8List bytes) async {
+  /// Parse CSV file with progress updates
+  Future<List<List<dynamic>>> parseCSVWithProgress(
+    Uint8List bytes,
+    Function(double)? onProgress,
+  ) async {
     try {
-      final String csvString = String.fromCharCodes(bytes);
+      final String csvString = utf8.decode(bytes);
+      
+      // Parse CSV (this is still synchronous but fast)
       final List<List<dynamic>> rows = const CsvToListConverter().convert(csvString);
+      
+      onProgress?.call(0.4);
+      
       return rows;
     } catch (e) {
       throw Exception('Failed to parse CSV: $e');
     }
+  }
+
+  /// Parse CSV file (legacy method for backwards compatibility)
+  Future<List<List<dynamic>>> parseCSV(Uint8List bytes) async {
+    return parseCSVWithProgress(bytes, null);
   }
 
   /// Parse Excel file
@@ -76,7 +99,55 @@ class FileController {
     }
   }
 
-  /// Detect column types from raw data
+  /// Detect column types with progress updates (async)
+  Future<List<DataColumn>> detectColumnsAsync(
+    List<List<dynamic>> rawData,
+    Function(double)? onProgress,
+  ) async {
+    if (rawData.isEmpty) {
+      return [];
+    }
+
+    // First row is headers
+    final headers = rawData[0].map((h) => h?.toString() ?? '').toList();
+    final dataRows = rawData.skip(1).toList();
+
+    List<DataColumn> columns = [];
+
+    for (int i = 0; i < headers.length; i++) {
+      final columnName = headers[i];
+      final columnData = dataRows.map((row) => 
+        i < row.length ? row[i] : null
+      ).where((val) => val != null).toList();
+
+      // Get sample values
+      final sampleValues = columnData.take(5).toList();
+
+      // Detect type
+      ColumnType type = _detectColumnType(columnData);
+      bool isDate = type == ColumnType.date;
+
+      columns.add(DataColumn(
+        name: columnName,
+        type: type,
+        sampleValues: sampleValues,
+        isDateColumn: isDate,
+      ));
+
+      // Update progress (40% to 100% range for column detection)
+      final progress = 0.4 + (i / headers.length) * 0.6;
+      onProgress?.call(progress);
+
+      // Yield to UI thread every 10 columns to keep responsive
+      if (i % 10 == 0 && i > 0) {
+        await Future.delayed(const Duration(milliseconds: 1));
+      }
+    }
+
+    return columns;
+  }
+
+  /// Detect column types from raw data (legacy synchronous method)
   List<DataColumn> detectColumns(List<List<dynamic>> rawData) {
     if (rawData.isEmpty) {
       return [];
